@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>相談員 申し送り（多端末共有版）｜おおやけの里</title>
+<style>
+  :root{
+    --bg:#F4F6F7; --surface:#FFFFFF; --ink:#1C2A33; --ink-soft:#5A6B73; --line:#D9E0E3;
+    --accent:#2C7A6B; --accent-dark:#235F54;
+    --mitaiou:#C0392B; --taiouchu:#C77A12; --kanryo:#4A7A4A;
+    --mitaiou-bg:#FBECEA; --taiouchu-bg:#FBF1E2; --kanryo-bg:#EBF1EB;
+    --report:#3A6FB0; --report-bg:#E8EFF8;
+    --shadow:0 1px 2px rgba(28,42,51,.06),0 4px 12px rgba(28,42,51,.05);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg);color:var(--ink);font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;line-height:1.6;-webkit-text-size-adjust:100%;}
+  header{background:var(--ink);color:#fff;padding:14px 18px;position:sticky;top:0;z-index:50;}
+  .head-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;max-width:1100px;margin:0 auto;}
+  .title{font-size:18px;font-weight:700;letter-spacing:.02em;}
+  .title small{display:block;font-size:12px;font-weight:400;color:#A9BCC2;margin-top:2px;}
+  .me{display:flex;align-items:center;gap:8px;}
+  .me label{font-size:12px;color:#A9BCC2;}
+  .me select{padding:7px 10px;border:1px solid #3A4A52;border-radius:7px;background:#283840;color:#fff;font-size:14px;min-width:110px;font-family:inherit;}
+  .logout{background:transparent;border:1px solid #3A4A52;color:#fff;border-radius:7px;padding:7px 12px;font-size:13px;cursor:pointer;font-family:inherit;}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px 14px 60px;}
+  .summary{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+  .stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;flex:1;min-width:110px;box-shadow:var(--shadow);}
+  .stat .num{font-size:24px;font-weight:700;}
+  .stat .lbl{font-size:12px;color:var(--ink-soft);}
+  .stat.red .num{color:var(--mitaiou);}
+  .stat.amber .num{color:var(--taiouchu);}
+  .tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+  .tab{padding:9px 16px;border:1px solid var(--line);background:var(--surface);border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;color:var(--ink-soft);}
+  .tab.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .panel{display:none;}
+  .panel.active{display:block;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:16px;margin-bottom:14px;}
+  .card h2{font-size:15px;margin:0 0 12px;}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  .field{display:flex;flex-direction:column;gap:4px;}
+  .field.full{grid-column:1 / -1;}
+  .field label{font-size:13px;font-weight:600;color:var(--ink-soft);}
+  .field .req{color:var(--mitaiou);font-weight:700;margin-left:3px;}
+  input[type=text],input[type=date],input[type=password],select,textarea{padding:9px 11px;border:1px solid var(--line);border-radius:8px;font-size:15px;font-family:inherit;background:#fff;color:var(--ink);width:100%;}
+  textarea{min-height:84px;resize:vertical;}
+  .btn{padding:10px 18px;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .btn-main{background:var(--accent);color:#fff;}
+  .btn-main:hover{background:var(--accent-dark);}
+  .btn-row{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;}
+  .filters select,.filters input{width:auto;min-width:120px;}
+  .filters .search{flex:1;min-width:160px;}
+  .item{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--line);border-radius:10px;padding:13px 15px;margin-bottom:11px;box-shadow:var(--shadow);}
+  .item.s-mitaiou{border-left-color:var(--mitaiou);}
+  .item.s-taiouchu{border-left-color:var(--taiouchu);}
+  .item.s-kanryo{border-left-color:var(--kanryo);opacity:.92;}
+  .item-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px;}
+  .badge{font-size:12px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;}
+  .b-mitaiou{background:var(--mitaiou-bg);color:var(--mitaiou);}
+  .b-taiouchu{background:var(--taiouchu-bg);color:var(--taiouchu);}
+  .b-kanryo{background:var(--kanryo-bg);color:var(--kanryo);}
+  .tag{font-size:12px;background:#EEF2F3;color:var(--ink-soft);padding:3px 9px;border-radius:6px;}
+  .tag.type{font-weight:700;}
+  .tag.t-report{background:var(--report-bg);color:var(--report);}
+  .tag.t-case{background:#E5EEF0;color:var(--accent-dark);}
+  .tag.assignee{background:#F0ECF6;color:#6A4E97;font-weight:600;}
+  .carry{font-size:12px;background:var(--mitaiou-bg);color:var(--mitaiou);padding:3px 9px;border-radius:6px;font-weight:700;}
+  .due{font-size:12px;background:#FBF1E2;color:var(--taiouchu);padding:3px 9px;border-radius:6px;font-weight:700;}
+  .due.over{background:var(--mitaiou-bg);color:var(--mitaiou);}
+  .item-title{font-weight:700;font-size:15px;}
+  .item-body{font-size:15px;white-space:pre-wrap;margin:4px 0 8px;}
+  .item-meta{font-size:12px;color:var(--ink-soft);display:flex;flex-wrap:wrap;gap:10px;}
+  .confirms{font-size:12px;margin-top:6px;}
+  .confirms .ok{color:var(--accent-dark);}
+  .confirms .ng{color:var(--mitaiou);font-weight:700;}
+  .item-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;}
+  .mini{padding:7px 12px;border-radius:7px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink);}
+  .mini:hover{background:#F2F5F6;}
+  .mini.go{border-color:var(--accent);color:var(--accent-dark);}
+  .mini.done{border-color:var(--kanryo);color:var(--kanryo);}
+  .mini.confirm{border-color:var(--report);color:var(--report);}
+  .mini.del{border-color:#C0392B;color:#C0392B;}
+  .empty{text-align:center;color:var(--ink-soft);padding:40px 10px;font-size:15px;}
+  .tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .note{font-size:13px;color:var(--ink-soft);background:#EEF2F3;border-radius:8px;padding:10px 13px;margin-top:10px;line-height:1.7;}
+  .mic-row{display:flex;justify-content:flex-end;margin-top:5px;}
+  .mic{display:inline-flex;align-items:center;gap:6px;padding:6px 13px;border:1px solid var(--accent);background:#fff;color:var(--accent-dark);border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .mic:hover{background:#EAF3F1;}
+  .mic.rec{background:var(--mitaiou);border-color:var(--mitaiou);color:#fff;animation:micpulse 1.2s infinite;}
+  .mic:disabled{opacity:.45;cursor:not-allowed;border-color:var(--line);color:var(--ink-soft);}
+  .mic svg{width:15px;height:15px;}
+  @keyframes micpulse{0%,100%{opacity:1;}50%{opacity:.55;}}
+  .overlay{position:fixed;inset:0;background:rgba(28,42,51,.55);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;}
+  .overlay.hidden{display:none;}
+  .login{background:#fff;border-radius:14px;padding:24px;width:340px;max-width:100%;box-shadow:0 10px 40px rgba(0,0,0,.25);}
+  .login h2{margin:0 0 4px;font-size:18px;}
+  .login p{margin:0 0 16px;font-size:13px;color:var(--ink-soft);}
+  .login .field{margin-bottom:12px;}
+  .login .err{color:var(--mitaiou);font-size:13px;min-height:18px;margin-bottom:6px;}
+  @media(max-width:560px){.grid{grid-template-columns:1fr;}}
+  @media print{header,.tabs,.summary,.filters,.item-actions,.btn-row,#tab-new,#tab-settings,.me,.overlay{display:none!important;}.item{break-inside:avoid;box-shadow:none;}}
+</style>
+</head>
+<body>
+
+<div class="overlay" id="loginOverlay">
+  <div class="login">
+    <h2>ログイン</h2>
+    <p>相談員 申し送りシステム（おおやけの里）</p>
+    <div class="err" id="loginErr"></div>
+    <div class="field"><label>メールアドレス</label><input type="text" id="loginEmail" autocomplete="username"></div>
+    <div class="field"><label>パスワード</label><input type="password" id="loginPass" autocomplete="current-password"></div>
+    <button class="btn btn-main" id="loginBtn" style="width:100%;">ログイン</button>
+  </div>
+</div>
+
+<header>
+  <div class="head-row">
+    <div class="title">相談員 申し送り<small>介護老人保健施設 おおやけの里（多端末共有版）</small></div>
+    <div class="me">
+      <label>操作者</label>
+      <select id="meName"><option value="">選択</option></select>
+      <button class="logout" id="logoutBtn" style="display:none;">ログアウト</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="summary">
+    <div class="stat red"><div class="num" id="cMitaiou">0</div><div class="lbl">未対応</div></div>
+    <div class="stat amber"><div class="num" id="cTaiouchu">0</div><div class="lbl">対応中</div></div>
+    <div class="stat"><div class="num" id="cUnread">0</div><div class="lbl">未確認の報告</div></div>
+    <div class="stat"><div class="num" id="cCarry">0</div><div class="lbl">前日からの継続</div></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="list">申し送り一覧</div>
+    <div class="tab" data-tab="new">新規入力</div>
+    <div class="tab" data-tab="history">履歴（完了）</div>
+    <div class="tab" data-tab="settings">設定</div>
+  </div>
+
+  <div class="panel active" id="tab-list">
+    <div class="filters">
+      <select id="fType"><option value="">種別：すべて</option></select>
+      <select id="fAssignee"><option value="">担当：すべて</option></select>
+      <select id="fStatus"><option value="">状態：未完了すべて</option><option value="未対応">未対応のみ</option><option value="対応中">対応中のみ</option></select>
+      <input type="text" class="search" id="fSearch" placeholder="件名・内容で検索" />
+    </div>
+    <div id="listArea"></div>
+  </div>
+
+  <div class="panel" id="tab-new">
+    <div class="card">
+      <h2>新規申し送りの入力</h2>
+      <div class="grid">
+        <div class="field"><label>種別<span class="req">必須</span></label>
+          <select id="nType"></select></div>
+        <div class="field"><label>担当</label>
+          <select id="nAssignee"></select></div>
+        <div class="field full"><label>件名・対象<span class="req">必須</span></label>
+          <input type="text" id="nTitle" placeholder="例：◯◯様 入所判定の件／理事会報告の共有" />
+          <div class="mic-row"><button type="button" class="mic" id="micTitle"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg><span class="mic-label">音声入力</span></button></div></div>
+        <div class="field full"><label>内容<span class="req">必須</span></label>
+          <textarea id="nContent" placeholder="何を・誰に・いつまでに、を具体的に。報告事項は要点を残す。"></textarea>
+          <div class="mic-row"><button type="button" class="mic" id="micContent"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg><span class="mic-label">音声入力</span></button></div></div>
+        <div class="field"><label>期限（任意）</label>
+          <input type="date" id="nDue" /></div>
+      </div>
+      <div class="btn-row"><button class="btn btn-main" id="addBtn">申し送りを登録</button></div>
+      <div class="note">登録した申し送りは、誰かが「完了」にするまで一覧に残ります。報告事項は、誰が確認済みで誰が未確認かが表示されます。入力した内容は数秒で全員の端末に反映されます。</div>
+    </div>
+  </div>
+
+  <div class="panel" id="tab-history">
+    <div class="filters">
+      <input type="text" class="search" id="hSearch" placeholder="件名・内容で検索" />
+      <select id="hRange"><option value="14">直近14日</option><option value="60">直近60日</option><option value="9999">すべて</option></select>
+    </div>
+    <div id="historyArea"></div>
+  </div>
+
+  <div class="panel" id="tab-settings">
+    <div class="card">
+      <h2>相談員の名簿</h2>
+      <div class="field full"><label>氏名（読点「、」で区切る）</label>
+        <input type="text" id="rosterInput" placeholder="例：瀧川、谷口、春名、佐藤、溝川" /></div>
+      <div class="btn-row"><button class="btn btn-main" id="saveRoster">名簿を保存</button></div>
+      <div class="note">ここで保存した名簿は全端末で共有され、操作者の選択・担当の選択・報告事項の未確認者の表示に使われます。最初は空です。ここに相談員の氏名を入力して保存してください。保存先はログインしないと見られないFirestoreなので、公開ページのソースに氏名が残ることはありません。</div>
+    </div>
+    <div class="card">
+      <h2>バックアップ</h2>
+      <div class="tools">
+        <button class="mini go" id="exportBtn">データを書き出す（JSON）</button>
+        <label class="mini" style="cursor:pointer;">データを読み込む（JSON）
+          <input type="file" id="importFile" accept="application/json" style="display:none;"></label>
+        <button class="mini" id="printBtn">印刷する</button>
+      </div>
+      <div class="note">
+        データはネット上の共有データベース（Firestore）に保存され、ログインした全員の端末で常に同じ内容が表示されます。<br>
+        ・「データを読み込む」は、以前のLocalStorage版で書き出したJSONを取り込むときに使えます（共有データベースに追加されます）。<br>
+        ・ケースの進捗や稼働率・予算の数字は、入所管理ダッシュボードが正式な管理元です。ここでは相談員間の共有と引き継ぎを扱います。
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+/* ===== Firebase 接続情報（プロジェクト: ooyake-soudan） ===== */
+const firebaseConfig = {
+  apiKey: "AIzaSyC8NwAM4sSiMGBKbSxZD_LKjSPVTEBn5F8",
+  authDomain: "ooyake-soudan.firebaseapp.com",
+  projectId: "ooyake-soudan",
+  storageBucket: "ooyake-soudan.firebasestorage.app",
+  messagingSenderId: "92927295781",
+  appId: "1:92927295781:web:49e5fbd09929abe0709acc"
+};
+/* ====================================================== */
+
+const DEFAULT_ROSTER=[];
+const TYPES=["報告事項","ケース共有","稼働状況","連絡事項"];
+const BROADCAST_TYPES={"報告事項":true,"連絡事項":true};
+const ME_KEY="oyake_soudan_me";
+
+let data=[];
+let roster=DEFAULT_ROSTER.slice();
+let unsubItems=null, unsubRoster=null;
+let db=null, auth=null, configured=false;
+
+const $=function(id){return document.getElementById(id);};
+function me(){return $("meName").value.trim();}
+function nowISO(){return new Date().toISOString();}
+function startOfToday(){var d=new Date();d.setHours(0,0,0,0);return d.getTime();}
+function fmt(iso){var d=new Date(iso);return ("0"+(d.getMonth()+1)).slice(-2)+"/"+("0"+d.getDate()).slice(-2)+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);}
+function daysSince(iso){return Math.round((startOfToday()-new Date(iso).setHours(0,0,0,0))/86400000);}
+function esc(s){return (s||"").replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+function find(id){for(var i=0;i<data.length;i++)if(data[i].id===id)return data[i];return null;}
+
+function rebuildRosterSelects(){
+  var meSel=$("meName");var cur=meSel.value;
+  meSel.innerHTML='<option value="">選択</option>';
+  $("nAssignee").innerHTML="";
+  $("fAssignee").innerHTML='<option value="">担当：すべて</option>';
+  roster.forEach(function(n){var o=document.createElement("option");o.value=n;o.textContent=n;meSel.appendChild(o);});
+  if(cur&&roster.indexOf(cur)>=0)meSel.value=cur;
+  ["全員","未定"].concat(roster).forEach(function(n){var o=document.createElement("option");o.value=n;o.textContent=n;$("nAssignee").appendChild(o);});
+  ["全員","未定"].concat(roster).forEach(function(n){var o=document.createElement("option");o.value=n;o.textContent=n;$("fAssignee").appendChild(o);});
+  var savedMe=localStorage.getItem(ME_KEY)||"";
+  if(savedMe&&roster.indexOf(savedMe)>=0)meSel.value=savedMe;
+}
+function fillTypeSelects(){
+  TYPES.forEach(function(t){
+    var o1=document.createElement("option");o1.value=t;o1.textContent=t;$("nType").appendChild(o1);
+    var o2=document.createElement("option");o2.value=t;o2.textContent=t;$("fType").appendChild(o2);
+  });
+}
+
+async function addItem(){
+  var type=$("nType").value,assignee=$("nAssignee").value,title=$("nTitle").value.trim(),content=$("nContent").value.trim(),due=$("nDue").value;
+  if(!type||!title||!content){alert("種別・件名・内容は必須です。");return;}
+  if(!me()){alert("画面右上で操作者（自分）を選択してください。");return;}
+  try{
+    await addDoc(collection(db,"okuri"),{type:type,assignee:assignee||"未定",title:title,content:content,due:due,
+      author:me(),createdAt:nowISO(),status:"未対応",confirms:[],completedBy:"",completedAt:""});
+    $("nTitle").value="";$("nContent").value="";$("nDue").value="";switchTab("list");
+  }catch(e){alert("登録できませんでした。通信状態を確認してください。");console.error(e);}
+}
+async function setStatus(id,st){
+  var it=find(id);if(!it)return;var patch={status:st};
+  if(st==="完了"){if(!me()){alert("右上で操作者を選択してください。");return;}patch.completedBy=me();patch.completedAt=nowISO();}
+  try{await updateDoc(doc(db,"okuri",id),patch);}catch(e){alert("更新できませんでした。");console.error(e);}
+}
+async function confirmRead(id){
+  if(!me()){alert("右上で操作者を選択してください。");return;}
+  var it=find(id);if(!it)return;var arr=(it.confirms||[]).slice();
+  if(arr.some(function(c){return c.name===me();}))return;
+  arr.push({name:me(),at:nowISO()});
+  try{await updateDoc(doc(db,"okuri",id),{confirms:arr});}catch(e){alert("更新できませんでした。");console.error(e);}
+}
+async function reopen(id){try{await updateDoc(doc(db,"okuri",id),{status:"対応中",completedBy:"",completedAt:""});}catch(e){console.error(e);}}
+async function delItem(id){if(!confirm("この申し送りを完全に削除します。元に戻せません。よろしいですか。"))return;try{await deleteDoc(doc(db,"okuri",id));}catch(e){alert("削除できませんでした。");console.error(e);}}
+window.setStatus=setStatus;window.confirmRead=confirmRead;window.reopen=reopen;window.delItem=delItem;
+
+function statusBadge(st){if(st==="未対応")return '<span class="badge b-mitaiou">未対応</span>';if(st==="対応中")return '<span class="badge b-taiouchu">対応中</span>';return '<span class="badge b-kanryo">完了</span>';}
+function typeTag(t){var c=t==="報告事項"?"t-report":(t==="ケース共有"?"t-case":"");return '<span class="tag type '+c+'">'+esc(t)+'</span>';}
+function unreadNames(it){return roster.filter(function(n){return !(it.confirms||[]).some(function(c){return c.name===n;});});}
+
+function itemHTML(it,inHistory){
+  var cls="item s-"+(it.status==="未対応"?"mitaiou":it.status==="対応中"?"taiouchu":"kanryo");
+  var d=daysSince(it.createdAt);
+  var carry=(!inHistory&&it.status!=="完了"&&d>=1)?'<span class="carry">継続 '+d+'日目</span>':"";
+  var dueHTML="";
+  if(it.due){var over=!inHistory&&it.status!=="完了"&&(new Date(it.due).setHours(23,59,59)<Date.now());dueHTML='<span class="due'+(over?" over":"")+'">期限 '+esc(it.due)+(over?" 超過":"")+'</span>';}
+  var confirms="";
+  if(it.confirms&&it.confirms.length)confirms+='<span class="ok">確認済み：'+it.confirms.map(function(c){return esc(c.name);}).join("、")+'</span>　';
+  if(!inHistory&&BROADCAST_TYPES[it.type]){var ng=unreadNames(it);if(ng.length)confirms+='<span class="ng">未確認：'+ng.map(esc).join("、")+'</span>';else confirms+='<span class="ok">全員確認済み</span>';}
+  var confLine=confirms?'<div class="confirms">'+confirms+'</div>':"";
+  var actions;
+  if(inHistory){
+    actions='<div class="item-actions"><button class="mini" onclick="reopen(\''+it.id+'\')">未完了に戻す</button><button class="mini del" onclick="delItem(\''+it.id+'\')">削除</button></div>';
+  }else{
+    var step=it.status==="未対応"?'<button class="mini go" onclick="setStatus(\''+it.id+'\',\'対応中\')">対応中にする</button>':'';
+    actions='<div class="item-actions"><button class="mini confirm" onclick="confirmRead(\''+it.id+'\')">確認した</button>'+step+'<button class="mini done" onclick="setStatus(\''+it.id+'\',\'完了\')">完了にする</button></div>';
+  }
+  var done=(it.status==="完了"&&it.completedBy)?'<span>完了：'+esc(it.completedBy)+" "+fmt(it.completedAt)+'</span>':'';
+  return '<div class="'+cls+'"><div class="item-top">'+statusBadge(it.status)+typeTag(it.type)+
+    '<span class="tag assignee">担当 '+esc(it.assignee)+'</span>'+dueHTML+carry+'</div>'+
+    '<div class="item-title">'+esc(it.title)+'</div>'+
+    '<div class="item-body">'+esc(it.content)+'</div>'+
+    '<div class="item-meta"><span>記入：'+esc(it.author)+" "+fmt(it.createdAt)+'</span>'+done+'</div>'+
+    confLine+actions+'</div>';
+}
+
+function render(){
+  var mi=0,ta=0,unread=0,carry=0;
+  data.forEach(function(it){
+    if(it.status==="未対応")mi++;else if(it.status==="対応中")ta++;
+    if(it.status!=="完了"&&daysSince(it.createdAt)>=1)carry++;
+    if(it.status!=="完了"&&BROADCAST_TYPES[it.type]&&unreadNames(it).length)unread++;
+  });
+  $("cMitaiou").textContent=mi;$("cTaiouchu").textContent=ta;$("cUnread").textContent=unread;$("cCarry").textContent=carry;
+
+  var ft=$("fType").value,fa=$("fAssignee").value,fs=$("fStatus").value,fq=$("fSearch").value.trim();
+  var list=data.filter(function(it){
+    if(it.status==="完了")return false;
+    if(ft&&it.type!==ft)return false;
+    if(fa&&it.assignee!==fa)return false;
+    if(fs&&it.status!==fs)return false;
+    if(fq&&(it.title+it.content).indexOf(fq)<0)return false;
+    return true;
+  });
+  list.sort(function(a,b){var r={"未対応":0,"対応中":1};if(r[a.status]!==r[b.status])return r[a.status]-r[b.status];return new Date(a.createdAt)-new Date(b.createdAt);});
+  $("listArea").innerHTML=list.length?list.map(function(it){return itemHTML(it,false);}).join(""):'<div class="empty">未完了の申し送りはありません。</div>';
+
+  var hq=$("hSearch").value.trim(),hr=parseInt($("hRange").value,10),limit=Date.now()-hr*86400000;
+  var hist=data.filter(function(it){if(it.status!=="完了")return false;if(it.completedAt&&new Date(it.completedAt).getTime()<limit)return false;if(hq&&(it.title+it.content).indexOf(hq)<0)return false;return true;}).sort(function(a,b){return new Date(b.completedAt)-new Date(a.completedAt);});
+  $("historyArea").innerHTML=hist.length?hist.map(function(it){return itemHTML(it,true);}).join(""):'<div class="empty">該当する完了済みの申し送りはありません。</div>';
+}
+
+function switchTab(name){
+  document.querySelectorAll(".tab").forEach(function(t){t.classList.toggle("active",t.dataset.tab===name);});
+  document.querySelectorAll(".panel").forEach(function(p){p.classList.toggle("active",p.id==="tab-"+name);});
+}
+function exportData(){var blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});var a=document.createElement("a");var dt=new Date();a.href=URL.createObjectURL(blob);a.download="相談員申し送り_"+dt.getFullYear()+("0"+(dt.getMonth()+1)).slice(-2)+("0"+dt.getDate()).slice(-2)+".json";a.click();URL.revokeObjectURL(a.href);}
+async function importData(file){
+  var r=new FileReader();
+  r.onload=async function(){
+    try{
+      var arr=JSON.parse(r.result);if(!Array.isArray(arr))throw 0;
+      if(!confirm("読み込んだ"+arr.length+"件を共有データベースに追加します。よろしいですか。"))return;
+      for(var i=0;i<arr.length;i++){var x=arr[i];if(!x)continue;
+        await addDoc(collection(db,"okuri"),{type:x.type||"連絡事項",assignee:x.assignee||"未定",title:x.title||"",content:x.content||"",due:x.due||"",
+          author:x.author||"",createdAt:x.createdAt||nowISO(),status:x.status||"未対応",confirms:x.confirms||[],completedBy:x.completedBy||"",completedAt:x.completedAt||""});}
+      alert("読み込みました。");
+    }catch(e){alert("ファイルを読み込めませんでした。形式を確認してください。");console.error(e);}
+  };
+  r.readAsText(file);
+}
+
+/* ===== 同期 ===== */
+function startListeners(){
+  unsubItems=onSnapshot(collection(db,"okuri"),function(snap){
+    data=snap.docs.map(function(d){var o=d.data();o.id=d.id;return o;});
+    render();
+  },function(err){console.error(err);});
+  unsubRoster=onSnapshot(doc(db,"config","roster"),function(ds){
+    if(ds.exists()&&Array.isArray(ds.data().names)&&ds.data().names.length)roster=ds.data().names;
+    else roster=DEFAULT_ROSTER.slice();
+    rebuildRosterSelects();$("rosterInput").value=roster.join("、");render();
+  },function(err){console.error(err);});
+}
+function stopListeners(){if(unsubItems){unsubItems();unsubItems=null;}if(unsubRoster){unsubRoster();unsubRoster=null;}}
+async function saveRosterRemote(){
+  var arr=$("rosterInput").value.split(/[、,]/).map(function(s){return s.trim();}).filter(Boolean);
+  if(!arr.length){alert("少なくとも1名は登録してください。");return;}
+  try{await setDoc(doc(db,"config","roster"),{names:arr});alert("名簿を保存しました。");}
+  catch(e){alert("保存できませんでした。");console.error(e);}
+}
+
+/* ===== 認証 ===== */
+function showLogin(show){
+  $("loginOverlay").classList.toggle("hidden",!show);
+  $("logoutBtn").style.display=show?"none":"inline-block";
+}
+function authError(code){
+  if(code==="auth/invalid-email")return "メールアドレスの形式が正しくありません。";
+  if(code==="auth/missing-password")return "パスワードを入力してください。";
+  if(code==="auth/invalid-credential"||code==="auth/wrong-password"||code==="auth/user-not-found")return "メールアドレスまたはパスワードが違います。";
+  if(code==="auth/too-many-requests")return "試行回数が多すぎます。しばらくしてからお試しください。";
+  return "ログインできませんでした。通信状態を確認してください。";
+}
+
+function init(){
+  fillTypeSelects();rebuildRosterSelects();
+  $("rosterInput").value=roster.join("、");
+
+  document.querySelectorAll(".tab").forEach(function(t){t.addEventListener("click",function(){switchTab(t.dataset.tab);});});
+  $("addBtn").addEventListener("click",addItem);
+  setupMic("micTitle","nTitle");setupMic("micContent","nContent");
+  ["fType","fAssignee","fStatus","fSearch","hSearch","hRange"].forEach(function(id){$(id).addEventListener("input",render);});
+  $("exportBtn").addEventListener("click",exportData);
+  $("importFile").addEventListener("change",function(){if(this.files[0])importData(this.files[0]);});
+  $("printBtn").addEventListener("click",function(){window.print();});
+  $("saveRoster").addEventListener("click",saveRosterRemote);
+  $("meName").addEventListener("change",function(){localStorage.setItem(ME_KEY,this.value);});
+
+  $("loginBtn").addEventListener("click",function(){
+    $("loginErr").textContent="";
+    signInWithEmailAndPassword(auth,$("loginEmail").value.trim(),$("loginPass").value).catch(function(e){$("loginErr").textContent=authError(e.code);});
+  });
+  $("loginPass").addEventListener("keydown",function(e){if(e.key==="Enter")$("loginBtn").click();});
+  $("logoutBtn").addEventListener("click",function(){signOut(auth);});
+
+  if(!configured){
+    $("loginErr").textContent="先にFirebaseの接続情報を設定してください。";
+    $("loginBtn").disabled=true;
+    return;
+  }
+  onAuthStateChanged(auth,function(user){
+    if(user){showLogin(false);$("loginPass").value="";startListeners();}
+    else{showLogin(true);stopListeners();data=[];render();}
+  });
+}
+
+/* ===== 音声入力 ===== */
+function setupMic(btnId,targetId){
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  var btn=$(btnId);var labelEl=btn.querySelector(".mic-label");
+  if(!SR){btn.disabled=true;btn.title="この端末は音声入力に対応していません。Google ChromeまたはMicrosoft Edgeでお試しください。";return;}
+  var rec=new SR();rec.lang="ja-JP";rec.continuous=true;rec.interimResults=true;
+  var recording=false,baseText="";
+  btn.addEventListener("click",function(){if(recording){rec.stop();return;}baseText=$(targetId).value;try{rec.start();}catch(e){}});
+  rec.onstart=function(){recording=true;btn.classList.add("rec");labelEl.textContent="停止";};
+  rec.onend=function(){recording=false;btn.classList.remove("rec");labelEl.textContent="音声入力";};
+  rec.onerror=function(e){recording=false;btn.classList.remove("rec");labelEl.textContent="音声入力";if(e.error==="not-allowed"||e.error==="service-not-allowed")alert("マイクの使用が許可されていません。ブラウザの設定でこのページのマイクを許可してください。");};
+  rec.onresult=function(e){var interim="";for(var i=e.resultIndex;i<e.results.length;i++){var t=e.results[i][0].transcript;if(e.results[i].isFinal)baseText+=t;else interim+=t;}$(targetId).value=baseText+interim;};
+}
+
+/* ===== 起動 ===== */
+try{
+  configured=(firebaseConfig.apiKey&&firebaseConfig.apiKey.indexOf("ここに")<0);
+  if(configured){var app=initializeApp(firebaseConfig);db=getFirestore(app);auth=getAuth(app);}
+}catch(e){configured=false;console.error(e);}
+init();
+</script>
+</body>
+</html>
