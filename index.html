@@ -139,6 +139,7 @@
   <div class="tabs">
     <div class="tab active" data-tab="list">申し送り一覧</div>
     <div class="tab" data-tab="new">新規入力</div>
+    <div class="tab" data-tab="bulk">音声まとめ入力</div>
     <div class="tab" data-tab="history">履歴（完了）</div>
     <div class="tab" data-tab="settings">設定</div>
   </div>
@@ -173,6 +174,20 @@
       <div class="btn-row"><button class="btn btn-main" id="addBtn">申し送りを登録</button></div>
       <div class="note">登録した申し送りは、誰かが「完了」にするまで一覧に残ります。報告事項は、誰が確認済みで誰が未確認かが表示されます。入力した内容は数秒で全員の端末に反映されます。</div>
     </div>
+  </div>
+
+  <div class="panel" id="tab-bulk">
+    <div class="card">
+      <h2>音声でまとめて入力し、種別ごとに振り分ける</h2>
+      <div class="note">申し送りをまとめて音声または手入力で記録し、用件ごとに種別（報告事項・ケース共有・稼働状況・連絡事項）へ分け、要約した下書きを作ります。デスクトップのChromeでは、この端末のAIが要約と分類を行います（データは外部に送信しません）。AIに対応していない端末では、要約はせず種別の分類のみ行います。いずれの場合も、内容は必ず確認してから登録してください。</div>
+      <div class="field full" style="margin-top:10px;">
+        <textarea id="bulkText" style="min-height:140px;" placeholder="例：理事会で来月から面会時間が変わると連絡がありました。森様の入所判定を今週中に出します。本日は新館で空床が2床あります。"></textarea>
+        <div class="mic-row"><button type="button" class="mic" id="bulkMic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg><span class="mic-label">音声入力</span></button></div>
+      </div>
+      <div class="btn-row"><button class="btn btn-main" id="bulkParseBtn">種別ごとに振り分ける</button></div>
+      <div id="bulkStatus" class="note" style="display:none;"></div>
+    </div>
+    <div id="bulkDraftArea"></div>
   </div>
 
   <div class="panel" id="tab-history">
@@ -398,6 +413,131 @@ function authError(code){
   return "ログインできませんでした。通信状態を確認してください。";
 }
 
+/* ===== 音声まとめ入力（端末内で種別分け） ===== */
+var TYPE_KW=[
+ {t:"稼働状況",kw:["空床","空き","稼働","満床","定員","ベッド","入所予定","退所予定","入退所","ショート"]},
+ {t:"報告事項",kw:["会議","理事会","通達","方針","決定","上から","お知らせ","周知","報告","連絡がありました","共有してほしい"]},
+ {t:"ケース共有",kw:["様","さん","申込","入所","退所","判定","見学","問い合わせ","家族","ケース","面談","相談"]}
+];
+function classifyType(s){for(var i=0;i<TYPE_KW.length;i++){for(var k=0;k<TYPE_KW[i].kw.length;k++){if(s.indexOf(TYPE_KW[i].kw[k])>=0)return TYPE_KW[i].t;}}return "連絡事項";}
+function makeTitle(s,type){
+  var m=s.match(/([一-龥ぁ-んァ-ヶー]{1,6})(様|さん)/);
+  if(type==="ケース共有"&&m)return m[1]+m[2]+"の件";
+  return s.length>16?s.slice(0,16)+"…":s;
+}
+var bulkDraft=[];
+function detectAssignee(s){for(var r=0;r<roster.length;r++){var base=roster[r].replace(/(様|さん)$/,"");if(base&&s.indexOf(base)>=0)return roster[r];}return "未定";}
+function parseBulkKeyword(){
+  var text=$("bulkText").value.trim();
+  var sentences=text.split(/[。\n！？!?]+/).map(function(s){return s.trim();}).filter(Boolean);
+  return sentences.map(function(s){var type=classifyType(s);return {type:type,assignee:detectAssignee(s),title:makeTitle(s,type),content:s};});
+}
+function setBulkStatus(t){var el=$("bulkStatus");if(!el)return;if(!t){el.style.display="none";el.textContent="";}else{el.style.display="block";el.textContent=t;}}
+function extractJSON(s){
+  s=String(s).replace(/```json/gi,"").replace(/```/g,"").trim();
+  var i=s.indexOf("["),j=s.lastIndexOf("]");
+  if(i>=0&&j>i)s=s.slice(i,j+1);
+  return JSON.parse(s);
+}
+function buildPrompt(text){
+  var names=roster.length?roster.join("、"):"（登録なし）";
+  return "あなたは介護老人保健施設の相談員の申し送りを整理する補助です。次の申し送りを用件ごとに分け、各用件を4種別のいずれかに分類し、内容を1〜2文に要約してください。\n"+
+    "種別の定義：報告事項=上からの連絡や決定の共有、ケース共有=利用者ごとの共有や引き継ぎ、稼働状況=空床や入退所の予定、連絡事項=それ以外。\n"+
+    "担当者の候補："+names+"。文中に担当者名があればその名前を assignee に入れ、なければ空にする。\n"+
+    "出力はJSON配列だけにし、前置き・説明・コードブロックは付けない。各要素は {\"type\":\"種別\",\"title\":\"短い件名\",\"content\":\"要約\",\"assignee\":\"担当名または空\"} の形式。\n\n"+
+    "申し送り：\n"+text;
+}
+function dlMonitor(m){m.addEventListener("downloadprogress",function(e){setBulkStatus("AIモデルを準備中… "+Math.round((e.loaded||0)*100)+"％（初回のみ）");});}
+async function createLM(){
+  try{return await LanguageModel.create({expectedInputs:[{type:"text",languages:["ja"]}],expectedOutputs:[{type:"text",languages:["ja"]}],monitor:dlMonitor});}
+  catch(e){try{return await LanguageModel.create({monitor:dlMonitor});}catch(e2){console.error(e2);return null;}}
+}
+async function getSummarizer(){
+  if(!("Summarizer" in self))return null;
+  try{
+    var a=await Summarizer.availability();if(a==="unavailable")return null;
+    try{return await Summarizer.create({type:"tldr",format:"plain-text",length:"short",expectedInputLanguages:["ja"],outputLanguage:"ja",monitor:dlMonitor});}
+    catch(e){return await Summarizer.create({type:"tldr",format:"plain-text",length:"short"});}
+  }catch(e){console.error(e);return null;}
+}
+async function summarizeText(sm,text){try{var r=await sm.summarize(text);return (r||text).toString().trim();}catch(e){return text;}}
+async function tryPromptAI(text){
+  if(!("LanguageModel" in self))return null;
+  try{
+    var avail;try{avail=await LanguageModel.availability();}catch(e){avail="downloadable";}
+    if(avail==="unavailable")return null;
+    setBulkStatus(avail==="available"?"この端末のAIで要約・分類しています…":"AIモデルを準備中…（初回は数分かかることがあります）");
+    var session=await createLM();if(!session)return null;
+    var out=await session.prompt(buildPrompt(text));
+    try{session.destroy();}catch(e){}
+    var arr=extractJSON(out);
+    if(!Array.isArray(arr)||!arr.length)return null;
+    return arr.map(function(o){
+      var content=(o&&o.content!=null?o.content:"").toString().trim();
+      var type=(o&&TYPES.indexOf(o.type)>=0)?o.type:classifyType(((o&&o.title)||"")+content);
+      var assignee=(o&&o.assignee&&roster.indexOf(o.assignee)>=0)?o.assignee:"未定";
+      var title=((o&&o.title)||"").toString().trim()||makeTitle(content,type);
+      return {type:type,assignee:assignee,title:title,content:content};
+    }).filter(function(d){return d.content;});
+  }catch(e){console.error(e);return null;}
+}
+async function parseBulk(){
+  var text=$("bulkText").value.trim();
+  if(!text){alert("申し送りの内容を入力または音声で記録してください。");return;}
+  var btn=$("bulkParseBtn");btn.disabled=true;
+  try{
+    var drafts=await tryPromptAI(text);var mode;
+    if(drafts&&drafts.length){
+      mode="この端末のAIで要約・分類しました。内容を確認してください。";
+    }else{
+      drafts=parseBulkKeyword();
+      var sm=await getSummarizer();
+      if(sm){
+        setBulkStatus("この端末のAIで要約しています…");
+        for(var i=0;i<drafts.length;i++){drafts[i].content=await summarizeText(sm,drafts[i].content);drafts[i].title=makeTitle(drafts[i].content,drafts[i].type);}
+        try{sm.destroy();}catch(e){}
+        mode="種別はキーワードで分類し、要約はこの端末のAIで作成しました。内容を確認してください。";
+      }else{
+        mode="この端末はAIに対応していないため、要約はせず種別の分類のみ行いました（要約はデスクトップのChromeで利用できます）。内容を確認してください。";
+      }
+    }
+    bulkDraft=drafts;setBulkStatus(mode);renderBulkDraft();
+  }catch(e){
+    console.error(e);bulkDraft=parseBulkKeyword();setBulkStatus("AI処理でエラーが出たため、種別の分類のみ行いました。内容を確認してください。");renderBulkDraft();
+  }finally{btn.disabled=false;}
+}
+function typeOptions(sel){return TYPES.map(function(t){return '<option value="'+t+'"'+(t===sel?" selected":"")+'>'+t+'</option>';}).join("");}
+function assigneeOptions(sel){return ["全員","未定"].concat(roster).map(function(n){return '<option value="'+esc(n)+'"'+(n===sel?" selected":"")+'>'+esc(n)+'</option>';}).join("");}
+function renderBulkDraft(){
+  if(!bulkDraft.length){$("bulkDraftArea").innerHTML='<div class="empty">振り分け結果がここに表示されます。文の中から用件を見つけられなかった場合は、区切りを増やして話し直すか、新規入力から手で登録してください。</div>';return;}
+  var html=bulkDraft.map(function(d,i){
+    return '<div class="card">'+
+      '<div style="margin-bottom:8px;"><label style="font-weight:700;font-size:14px;"><input type="checkbox" id="bk_inc_'+i+'" checked style="width:auto;margin-right:6px;">この項目を登録する</label></div>'+
+      '<div class="grid">'+
+        '<div class="field"><label>種別</label><select id="bk_type_'+i+'">'+typeOptions(d.type)+'</select></div>'+
+        '<div class="field"><label>担当</label><select id="bk_assignee_'+i+'">'+assigneeOptions(d.assignee)+'</select></div>'+
+        '<div class="field full"><label>件名・対象</label><input type="text" id="bk_title_'+i+'" value="'+esc(d.title)+'"></div>'+
+        '<div class="field full"><label>内容</label><textarea id="bk_content_'+i+'">'+esc(d.content)+'</textarea></div>'+
+      '</div></div>';
+  }).join("");
+  html+='<div class="btn-row"><button class="btn btn-main" id="bulkApplyBtn">チェックした項目を登録</button></div>';
+  $("bulkDraftArea").innerHTML=html;
+  $("bulkApplyBtn").addEventListener("click",applyBulk);
+}
+async function applyBulk(){
+  if(!me()){alert("画面右上で操作者（自分）を選択してください。");return;}
+  var count=0,errors=0;
+  for(var i=0;i<bulkDraft.length;i++){
+    var inc=$("bk_inc_"+i);if(!inc||!inc.checked)continue;
+    var type=$("bk_type_"+i).value,assignee=$("bk_assignee_"+i).value,title=$("bk_title_"+i).value.trim(),content=$("bk_content_"+i).value.trim();
+    if(!title||!content)continue;
+    try{await addDoc(collection(db,"okuri"),{type:type,assignee:assignee||"未定",title:title,content:content,due:"",author:me(),createdAt:nowISO(),status:"未対応",confirms:[],completedBy:"",completedAt:""});count++;}
+    catch(e){errors++;console.error(e);}
+  }
+  bulkDraft=[];$("bulkText").value="";$("bulkDraftArea").innerHTML="";setBulkStatus("");switchTab("list");
+  alert(count+"件を登録しました。"+(errors?(" "+errors+"件は登録できませんでした。通信状態を確認してください。"):""));
+}
+
 function init(){
   fillTypeSelects();rebuildRosterSelects();
   $("rosterInput").value=roster.join("、");
@@ -405,6 +545,8 @@ function init(){
   document.querySelectorAll(".tab").forEach(function(t){t.addEventListener("click",function(){switchTab(t.dataset.tab);});});
   $("addBtn").addEventListener("click",addItem);
   setupMic("micTitle","nTitle");setupMic("micContent","nContent");
+  setupMic("bulkMic","bulkText");
+  $("bulkParseBtn").addEventListener("click",parseBulk);
   ["fType","fAssignee","fStatus","fSearch","hSearch","hRange"].forEach(function(id){$(id).addEventListener("input",render);});
   $("exportBtn").addEventListener("click",exportData);
   $("importFile").addEventListener("change",function(){if(this.files[0])importData(this.files[0]);});
